@@ -1,17 +1,21 @@
-import 'dart:developer';
 import 'dart:io';
-import 'package:chat_ui/screens/homescreen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../models/usermodel.dart';
+import 'homescreen.dart';
 
 class CompleteProfile extends StatefulWidget {
-  const CompleteProfile(
-      {super.key, required this.firebaseUser, required this.userModel});
+  const CompleteProfile({
+    super.key,
+    required this.firebaseUser,
+    required this.userModel,
+  });
   final UserModel userModel;
   final User firebaseUser;
   static const routeName = '/complete-profile';
@@ -23,43 +27,33 @@ class _CompleteProfileState extends State<CompleteProfile> {
   final fullNamecontroller = TextEditingController();
   File? _image;
 
-  Future _pickImage(ImageSource source) async {
-    final image = await ImagePicker().pickImage(source: source);
-    if (image == null) {
-      return;
+  void _pickImage(ImageSource source) async {
+    try {
+      XFile? pickedImage = await ImagePicker().pickImage(source: source);
+      if (pickedImage == null) return;
+      File? img = File(pickedImage.path);
+      img = await _cropImage(
+        img,
+      );
+      setState(() {
+        _image = img;
+      });
+    } catch (e) {
+      print(e);
     }
-    File? img = File(image.path);
-    setState(() {
-      _image = img;
-    });
   }
 
-  void uploadData() async {
-    UploadTask uploadTask = FirebaseStorage.instance
-        .ref("profilepictures")
-        .child(widget.userModel.uid as String)
-        .putFile(_image!);
-    TaskSnapshot snapshot = await uploadTask;
-    String imageUrl = await snapshot.ref.getDownloadURL();
-    String fullname = fullNamecontroller.text.trim();
-
-    widget.userModel.fullName = fullname;
-    widget.userModel.profilepic = imageUrl;
-    // print(fullname);
-
-    FirebaseFirestore.instance
-        .collection("users")
-        .doc(widget.userModel.uid)
-        .set(widget.userModel.toMap())
-        .then((value) {
-      log("Data uploaded");
-      Navigator.push(context, MaterialPageRoute(builder: (context) {
-        return HomeScreen(
-          firebaseUser: widget.firebaseUser,
-          userModel: widget.userModel,
-        );
-      }));
-    });
+  Future<File?> _cropImage(File imageFile) async {
+    CroppedFile? croppedfile = await ImageCropper().cropImage(
+      sourcePath: imageFile.path,
+      aspectRatio: const CropAspectRatio(
+        ratioX: 1,
+        ratioY: 1,
+      ),
+      compressQuality: 100
+    );
+    if (croppedfile == null) return null;
+    return File(croppedfile.path);
   }
 
   void checkValues() {
@@ -72,6 +66,40 @@ class _CompleteProfileState extends State<CompleteProfile> {
     }
   }
 
+  void uploadData() async {
+    UploadTask uploadTask = FirebaseStorage.instance
+        .ref("profilePicture")
+        .child(widget.userModel.uid.toString())
+        .putFile(_image!);
+
+    TaskSnapshot snapshot = await uploadTask;
+    String imageUrl = await snapshot.ref.getDownloadURL();
+    String fullName = fullNamecontroller.text.trim();
+
+    widget.userModel.fullName = fullName;
+    widget.userModel.profilepic = imageUrl;
+
+    await FirebaseFirestore.instance
+        .collection("users")
+        .doc(widget.userModel.uid)
+        .set(widget.userModel.toMap())
+        .then(
+      (vlaue) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) {
+              return HomeScreen(
+                firebaseUser: widget.firebaseUser,
+                userModel: widget.userModel,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     void showPhotoOptions() {
@@ -82,6 +110,7 @@ class _CompleteProfileState extends State<CompleteProfile> {
             title: const Text(
               "Upload Picture",
               textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,

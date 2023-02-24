@@ -1,8 +1,8 @@
 class UserModel {
   late final String? uid;
-  late final String? profilepic;
+  String? profilepic;
   late final String? email;
-  late final String? fullName;
+  String? fullName;
 
   UserModel({
     required this.email,
@@ -18,7 +18,7 @@ class UserModel {
     profilepic = map["profilepic"];
   }
 
-  Map<String, dynamic>  toMap() {
+  Map<String, dynamic> toMap() {
     return {
       "uid": uid,
       "fullName": fullName,

@@ -1,3 +1,4 @@
+import 'package:chat_ui/screens/search_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -14,13 +15,19 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: const Text("Chat App"),
       ),
       body: SafeArea(
         child: Container(),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        backgroundColor: Colors.blue,
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) {
+            return SearchPage(firebaseUser: firebaseUser, userModel: userModel);
+          }));
+        },
         child: const Icon(Icons.search),
       ),
     );
